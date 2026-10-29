@@ -67,6 +67,8 @@ From source, copy `mod/beamlog` into the user folder as `mods/unpacked/beamlog`.
 | ABS Active, TC Active | | |
 | CG Accel Lateral, Longitudinal, Vertical | G | the vehicle's acceleration sensor |
 | Chassis Yaw Rate | deg/s | |
+| Body Roll, Body Pitch | deg | the body's attitude, from its forward and up directions |
+| Body Roll Rate, Body Pitch Rate | deg/s | |
 | Car Coord X, Y, Z | m | world position |
 | GPS Latitude, Longitude | deg | world position as degrees near (0, 0), for i2's track map |
 | Wheel Speed, Wheel Slip, Wheel Angular Speed, Tire Radius, Brake Temp (per wheel) | km/h, %, rad/s, mm, C | each wheel, named as the car names them (FL, FR, RL, RR) |
@@ -74,8 +76,9 @@ From source, copy `mod/beamlog` into the user folder as `mods/unpacked/beamlog`.
 Names follow those common in sim-racing MoTeC files, so existing worksheets find them.
 Signs: lateral acceleration positive to the left; longitudinal positive when speeding up;
 vertical with gravity removed (0 standing still); yaw rate and steering positive to the
-right. The game's acceleration sensor shakes with the chassis (a couple of m/s² from one
-step to the next), so accelerations and yaw rate are smoothed with a 0.1 s time constant.
+right; body roll positive with the right side down (as when cornering left), body pitch
+positive nose up, and their rates the same way. The game's acceleration sensor shakes with the chassis (a couple of m/s² from one
+step to the next), so accelerations and yaw, roll and pitch rates are smoothed with a 0.1 s time constant.
 
 ## The workspace
 
@@ -84,7 +87,7 @@ step to the next), so accelerations and yaw rate are smoothed with a 0.1 s time 
 - **Driver**: a run overview (speed, revs, gear, pedals, steering, track map, g-g) and inputs.
 - **Engine & Gearing**: a gearing map (revs against speed, coloured by gear), shifts,
   torque and power against revs coloured by throttle, temperatures and load, time at revs.
-- **Chassis**: the g-g diagram and accelerations; steering against yaw rate.
+- **Chassis**: the g-g diagram and accelerations; steering against yaw rate; body roll and pitch, with roll against lateral g (the roll gradient).
 - **Wheels & Brakes**: wheel speeds and slip, traction (rear slip against throttle),
   brake temperatures and ABS.
 

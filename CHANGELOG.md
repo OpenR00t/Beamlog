@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Fixed: switching or respawning the vehicle while a stopped run was still being saved left the `.ld` with only some of its channels and no `.ldx`. The save is now finished before the vehicle goes.
+- Added Body Roll, Body Pitch, Body Roll Rate and Body Pitch Rate channels, and a Body worksheet in the workspace (roll and pitch against time, and the roll gradient: body roll against lateral g).
+- Fixed: swapping or removing the vehicle lost the run. A run still recording was never saved, and one still being written was left with only some of its channels and no `.ldx`. The game doesn't call the vehicle-side extension hooks for this, so the recorder now chains onto the global `onDespawnObject` and saves everything before the vehicle goes.
 
 ## 0.1.0
 

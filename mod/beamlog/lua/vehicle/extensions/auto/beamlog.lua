@@ -20,7 +20,9 @@
 --
 -- Channel names follow those common in sim-racing MoTeC files. Signs: lateral
 -- acceleration positive to the left, longitudinal positive when speeding up,
--- vertical with gravity removed, yaw rate and steering positive to the right.
+-- vertical with gravity removed, yaw rate and steering positive to the right,
+-- body roll positive with the right side down (as when cornering left), body
+-- pitch positive nose up; roll and pitch rates follow the same signs.
 -- The game's acceleration sensor shakes with the chassis (a couple of m/s^2
 -- from step to step), so accelerations and yaw rate are smoothed (SMOOTHING).
 
@@ -50,7 +52,8 @@ local saving = {}         -- finished runs being written, oldest first
 local lastFile = nil
 local held = false        -- stopped by hand: don't start again on movement
 local sinceUi = 0
-local smooth = { x = 0, y = 0, z = -G, yaw = 0 }
+local smooth = { x = 0, y = 0, z = -G, yaw = 0, rollRate = 0, pitchRate = 0 }
+local attitude = { roll = 0, pitch = 0, ready = false }
 
 local function ev(name) return electrics.values[name] or 0 end
 
@@ -120,6 +123,10 @@ local function buildChannels(engine)
     { "CG Accel Longitudinal", "G", 3, function() return -smooth.y / G end },
     { "CG Accel Vertical", "G", 3, function() return -smooth.z / G - 1 end },
     { "Chassis Yaw Rate", "deg/s", 2, function() return smooth.yaw * DEG end },
+    { "Body Roll", "deg", 2, function() return attitude.roll * DEG end },
+    { "Body Pitch", "deg", 2, function() return attitude.pitch * DEG end },
+    { "Body Roll Rate", "deg/s", 2, function() return smooth.rollRate * DEG end },
+    { "Body Pitch Rate", "deg/s", 2, function() return smooth.pitchRate * DEG end },
     { "Car Coord X", "m", 2, function() return pos().x end },
     { "Car Coord Y", "m", 2, function() return pos().y end },
     { "Car Coord Z", "m", 2, function() return pos().z end },
@@ -292,6 +299,8 @@ local function sendState()
   })
 end
 
+local hookDespawn -- set below, once closeRun exists
+
 local function openRun()
   pcall(function() FS:directoryCreate(DIR, true) end)
   local model = v and v.config and v.config.mainPartName or "vehicle"
@@ -303,6 +312,8 @@ local function openRun()
   for i = 1, #channels do buffers[i] = ffi.new("int32_t[?]", FIRST_CAPACITY) end
   -- the game calls onPhysicsStep for extensions only once this has been called
   if enablePhysicsStepHook then pcall(enablePhysicsStepHook) end
+  attitude.ready = false
+  hookDespawn()
   run = {
     path = path, session = path:match("[^/]+$"), channels = channels, buffers = buffers,
     capacity = FIRST_CAPACITY, count = 0, rate = settings.rate, laps = {}, accum = 0, idle = 0,
@@ -349,10 +360,28 @@ end
 
 ---------------------------------------------------------------- hooks
 
+-- the body's roll and pitch from its forward and up directions (world z is up)
+local function wrap(a)
+  if a > math.pi then return a - 2 * math.pi elseif a < -math.pi then return a + 2 * math.pi end
+  return a
+end
+local function updateAttitude(dt, a)
+  local f, u = obj:getDirectionVector(), obj:getDirectionVectorUp()
+  local rz = f.x * u.y - f.y * u.x -- z of forward x up: the right-hand side's height
+  local roll = math.atan2(-rz, u.z)
+  local pitch = math.atan2(f.z, math.sqrt(f.x * f.x + f.y * f.y))
+  if attitude.ready and dt > 0 then
+    smooth.rollRate = smooth.rollRate + (wrap(roll - attitude.roll) / dt - smooth.rollRate) * a
+    smooth.pitchRate = smooth.pitchRate + ((pitch - attitude.pitch) / dt - smooth.pitchRate) * a
+  end
+  attitude.roll, attitude.pitch, attitude.ready = roll, pitch, true
+end
+
 local function onPhysicsStep(dt)
   if not run then return end
   run.physics = true
   local a = min(dt / SMOOTHING, 1)
+  updateAttitude(dt, a)
   smooth.x = smooth.x + ((sensors.gx or 0) - smooth.x) * a
   smooth.y = smooth.y + ((sensors.gy or 0) - smooth.y) * a
   smooth.z = smooth.z + ((sensors.gz or -G) - smooth.z) * a
@@ -380,6 +409,7 @@ local function updateGFX(dt)
   if not run and settings.auto and not held and moving then openRun() end
   if run and not run.physics then
     -- no physics steps arriving: sample here, at the same fixed rate
+    updateAttitude(dt, min(dt / SMOOTHING, 1))
     run.accum = run.accum + dt
     local period = 1 / run.rate
     while run.accum >= period do
@@ -443,7 +473,23 @@ local function setAuto(on)
   sendState()
 end
 
+-- Swapping or removing the vehicle doesn't call the vehicle-side extension hooks:
+-- the game only calls the global onDespawnObject before the vehicle's Lua goes
+-- away. Chain onto it, so a run still recording (or still being written) is saved.
+local previousDespawn
+local function onDespawn(...)
+  pcall(closeRun, true)
+  if previousDespawn then return previousDespawn(...) end
+end
+hookDespawn = function()
+  local current = rawget(_G, "onDespawnObject")
+  if current == onDespawn then return end
+  previousDespawn = current
+  _G.onDespawnObject = onDespawn
+end
+
 loadSettings()
+hookDespawn()
 
 M.onPhysicsStep = onPhysicsStep
 M.updateGFX = updateGFX

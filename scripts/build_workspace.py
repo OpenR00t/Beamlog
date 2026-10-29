@@ -161,6 +161,10 @@ WORKBOOKS = {
             time_distance("Yaw", "0,0,650,1000", [["Steering Angle"], ["Chassis Yaw Rate"], ["CG Accel Lateral"], ["Ground Speed"]]),
             scatter("Steering vs Yaw", "650,0,1000,1000", "Steering Angle", ["Chassis Yaw Rate"], "Ground Speed", (0, 250, 10)),
         ]),
+        ("Body", [
+            time_distance("Body", "0,0,650,1000", [["Body Roll"], ["Body Pitch"], ["Body Roll Rate", "Body Pitch Rate"], ["CG Accel Lateral", "CG Accel Longitudinal"]]),
+            scatter("Roll Gradient", "650,0,1000,1000", "CG Accel Lateral", ["Body Roll"], "Ground Speed", (0, 250, 10), (-2, 2)),
+        ]),
     ],
     "Wheels & Brakes": [
         ("Wheel Speeds", [

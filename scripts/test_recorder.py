@@ -25,11 +25,17 @@ SCRIPT = ROOT / "mod" / "beamlog" / "lua" / "vehicle" / "extensions" / "auto" / 
 
 GAME = r"""
 vec = function(x, y, z) return { x = x, y = y, z = z, length = function(s) return math.sqrt(s.x^2 + s.y^2 + s.z^2) end } end
-car = { v = 0, x = 0, y = 0, h = 0, yaw = 0, ax = 0, ay = 0 }
+car = { v = 0, x = 0, y = 0, h = 0, yaw = 0, ax = 0, ay = 0, roll = 0, pitch = -0.02, rollRate = 0 }
 obj = {
   getVelocity = function() return vec(car.v, 0, 0) end,
   getPosition = function() return vec(car.x, car.y, 3) end,
   getYawAngularVelocity = function() return car.yaw end,
+  -- heading north (+y); roll right side down and pitch nose up by car.roll, car.pitch (rad)
+  getDirectionVector = function() return vec(0, math.cos(car.pitch), math.sin(car.pitch)) end,
+  getDirectionVectorUp = function()
+    local sr, cr, sp, cp = math.sin(car.roll), math.cos(car.roll), math.sin(car.pitch), math.cos(car.pitch)
+    return vec(sr, -cr * sp, cr * cp)
+  end,
 }
 electrics = { values = { gearIndex = 1, throttle = 0, steering = 0, steering_input = 0, wheelspeed = 0,
   watertemp = 90, oiltemp = 95, fuel = 0.5, wheelThermals = { RL = { brakeSurfaceTemperature = 120 } } } }
@@ -56,6 +62,7 @@ function drive(M, seconds, accel, yaw)
     car.v = car.v + accel * dt
     car.yaw = yaw                      -- the game: positive to the right
     car.h = car.h + yaw * dt
+    car.roll = car.roll + car.rollRate * dt
     car.x = car.x + car.v * math.sin(car.h) * dt
     car.y = car.y + car.v * math.cos(car.h) * dt
     local shake = (i % 2 == 0) and 2 or -2
@@ -107,7 +114,9 @@ def main():
     M.lap()
     drive(M, 10, 0.0, 0.3)
     M.lap()
+    lua.execute("car.rollRate = 0.1")  # rolling right side down at 0.1 rad/s for the last 2 s
     drive(M, 2, 0.0, 0.3)
+    lua.execute("car.rollRate = 0")
     M.stop()
     for _ in range(200):  # saving is spread over frames
         M.updateGFX(1 / 60)
@@ -130,6 +139,12 @@ def main():
     assert 4 < at("Wheel Slip RL", 15) < 6, at("Wheel Slip RL", 15)
     assert at("Brake Temp RL", 15) == 120
     assert ch["GPS Latitude"][0] == "deg"
+    # body attitude: pitch steady nose down 1.15 deg; roll ramps to 11.5 deg, right side down, at 5.7 deg/s
+    assert abs(at("Body Pitch", 15) - (-1.146)) < 0.02, at("Body Pitch", 15)
+    assert abs(at("Body Pitch Rate", 15)) < 0.05 and abs(at("Body Roll", 15)) < 0.02
+    assert abs(ch["Body Roll"][2][-1] - 11.46) < 0.1, ch["Body Roll"][2][-1]
+    assert abs(ch["Body Roll Rate"][2][-1] - 5.73) < 0.1, ch["Body Roll Rate"][2][-1]
+    assert ch["Body Roll"][0] == "deg" and ch["Body Roll Rate"][0] == "deg/s"
 
     ldx = ld.with_suffix(".ldx").read_text()
     times = [float(t) / 1e6 for t in re.findall(r'Time="([0-9.]+)"', ldx)]
@@ -161,6 +176,17 @@ def main():
     assert len(lds) == 3, lds
     assert len(read_ld(lds[-1])) == len(ch), "every channel written"
     assert lds[-1].with_suffix(".ldx").exists(), "lap file written"
+
+    # the vehicle swapped while still recording: the game only calls the global onDespawnObject
+    lua.execute("despawned = false; function onDespawnObject() despawned = true end")
+    M.start()  # re-chains onto the game's new onDespawnObject
+    for _ in range(120):
+        M.updateGFX(1 / 60)
+    lua.globals().onDespawnObject()
+    assert lua.eval("despawned"), "the game's own onDespawnObject still runs"
+    lds = sorted(pathlib.Path(work, "beamlog").glob("*.ld"))
+    assert len(lds) == 4, lds
+    assert len(read_ld(lds[-1])) == len(ch) and lds[-1].with_suffix(".ldx").exists(), "run saved whole"
 
     # settings persist; changing the rate during a run starts a new file
     M.setRate(100)
