@@ -1,0 +1,43 @@
+name: Release
+
+# Push a tag like v0.1.0 to test everything, build the downloads and publish
+# them on a GitHub release for that tag:
+#   beamlog-mod.zip        the in-game recorder and its UI app
+#   beamlog-workspace.zip  the MoTeC i2 workspace
+#   beamlog.exe            the optional command-line tool
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test
+        shell: bash
+        run: |
+          cargo test --locked
+          pip install lupa
+          python scripts/test_recorder.py
+      - name: Build
+        run: cargo build --release --locked
+      - name: Package
+        shell: bash
+        run: |
+          python scripts/package.py dist
+          cp target/release/beamlog.exe dist/beamlog.exe
+      - name: Publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/beamlog-mod.zip dist/beamlog-workspace.zip dist/beamlog.exe \
+            --title "Beamlog $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md

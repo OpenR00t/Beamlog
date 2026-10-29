@@ -1,0 +1,15 @@
+[package]
+name = "beamlog"
+version = "0.1.0"
+edition = "2021"
+description = "Turns BeamNG.drive driving logs into MoTeC i2 files"
+license = "AGPL-3.0-or-later"
+publish = false
+rust-version = "1.80"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[dependencies]

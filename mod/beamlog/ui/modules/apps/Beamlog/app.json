@@ -1,0 +1,19 @@
+{
+  "domElement": "<beamlog-recorder></beamlog-recorder>",
+  "name": "Beamlog",
+  "types": ["ui.apps.categories.debug"],
+  "description": "Record the car you're driving as MoTeC i2 files: start, stop, split runs, mark laps, set the sample rate.",
+  "css": {
+    "left": "20px",
+    "top": "200px",
+    "width": "250px",
+    "height": "150px"
+  },
+  "author": "The Beamlog contributors",
+  "version": "0.1.0",
+  "preserveAspectRatio": false,
+  "directive": "beamlogRecorder",
+  "category": "Debug",
+  "isAuxiliary": false,
+  "interactive": "yes"
+}

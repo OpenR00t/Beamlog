@@ -1,0 +1,13 @@
+beamlog: turns BeamNG.drive driving logs into MoTeC i2 files
+
+  beamlog                     convert every finished log in BeamNG's beamlog folder
+  beamlog watch               keep doing that every few seconds, until Ctrl+C
+  beamlog FILE.csv ...        convert these logs
+  beamlog info FILE ...       print a summary of each run (.ld or .csv)
+  beamlog check FILE.ld ...   list the channels in a converted file
+
+options:
+  --out DIR    where the .ld and .ldx files go (default: beside each log)
+  --rate HZ    channel rate in Hz (default: the rate it was recorded at, or 50)
+
+BeamNG's user folder is found automatically; set BEAMLOG_BEAMNG_USER to override.

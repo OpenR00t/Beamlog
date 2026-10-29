@@ -1,0 +1,6 @@
+/target
+*.ld
+*.ldx
+/samples/*.csv
+/dist
+__pycache__/
