@@ -10,7 +10,7 @@
     "height": "150px"
   },
   "author": "The Beamlog contributors",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "preserveAspectRatio": false,
   "directive": "beamlogRecorder",
   "category": "Debug",
