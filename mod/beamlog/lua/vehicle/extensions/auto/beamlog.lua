@@ -318,8 +318,9 @@ local function closeRun(now)
       saving[#saving + 1] = { run = run, path = run.path, step = 0 }
     end
     run = nil
-    if now then finishAll() end
   end
+  -- the vehicle is going away: finish every save still in progress, not only this run's
+  if now then finishAll() end
   sendState()
 end
 

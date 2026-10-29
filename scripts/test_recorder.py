@@ -149,6 +149,19 @@ def main():
     _, rate, sp = read_ld(lds[-1])["Ground Speed"]
     assert rate == 50 and 95 <= len(sp) <= 101, (rate, len(sp))
 
+    # the vehicle replaced while a stopped run is still being written: the save is finished at once
+    M.start()
+    for _ in range(120):
+        M.updateGFX(1 / 60)
+    M.stop()
+    for _ in range(3):  # only partly written
+        M.updateGFX(1 / 60)
+    M.onVehicleDestroyed()
+    lds = sorted(pathlib.Path(work, "beamlog").glob("*.ld"))
+    assert len(lds) == 3, lds
+    assert len(read_ld(lds[-1])) == len(ch), "every channel written"
+    assert lds[-1].with_suffix(".ldx").exists(), "lap file written"
+
     # settings persist; changing the rate during a run starts a new file
     M.setRate(100)
     assert lua.eval("saved.rate") == 100

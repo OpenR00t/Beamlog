@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: switching or respawning the vehicle while a stopped run was still being saved left the `.ld` with only some of its channels and no `.ldx`. The save is now finished before the vehicle goes.
+
 ## 0.1.0
 
 First release.
