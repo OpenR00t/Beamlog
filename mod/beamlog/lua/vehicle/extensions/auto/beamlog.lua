@@ -224,7 +224,15 @@ end
 local function saveStep(job)
   if job.step == 0 then
     job.file = io.open(job.path .. ".ld", "wb")
-    if not job.file then return true end
+    if not job.file then
+      -- the folder couldn't be made: save in the user folder itself instead
+      job.path = "beamlog_" .. job.run.session
+      job.file = io.open(job.path .. ".ld", "wb")
+    end
+    if not job.file then
+      if log then log("E", "beamlog", "couldn't write " .. job.path .. ".ld") end
+      return true
+    end
     job.file:write(ldHead(job.run))
   elseif job.step <= #job.run.channels then
     job.file:write(ffi.string(job.run.buffers[job.step], job.run.count * 4))

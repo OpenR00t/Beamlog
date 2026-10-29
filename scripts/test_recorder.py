@@ -44,7 +44,7 @@ guihooks = { trigger = function(name, s) lastState = s end }
 saved = nil
 jsonReadFile = function() return saved end
 jsonWriteFile = function(p, t) saved = { auto = t.auto, rate = t.rate } end
-FS = { directoryCreate = function(self, d) os.execute("mkdir -p " .. d) end }
+FS = { directoryCreate = function(self, d) end }  -- the test makes the folder itself
 hookEnabled = false
 enablePhysicsStepHook = function() hookEnabled = true end
 
@@ -93,6 +93,7 @@ def main():
     work = os.environ.get("BEAMLOG_TEST_DIR") or tempfile.mkdtemp()
     os.makedirs(work, exist_ok=True)
     os.chdir(work)
+    os.makedirs("beamlog", exist_ok=True)
     lua = luajit21.LuaRuntime()
     lua.execute(GAME)
     M = lua.execute(SCRIPT.read_text())
@@ -151,6 +152,21 @@ def main():
     # settings persist; changing the rate during a run starts a new file
     M.setRate(100)
     assert lua.eval("saved.rate") == 100
+    # no beamlog folder (it couldn't be made): the run is saved in the user folder itself
+    bare = tempfile.mkdtemp()
+    os.chdir(bare)
+    lua2 = luajit21.LuaRuntime()
+    lua2.execute(GAME)
+    M2 = lua2.execute(SCRIPT.read_text())
+    M2.start()
+    lua2.globals().drive(M2, 2, 3.0, 0.0)
+    M2.stop()
+    for _ in range(200):
+        M2.updateGFX(1 / 60)
+    fallback = sorted(p.name for p in pathlib.Path(bare).glob("beamlog_*"))
+    assert any(n.endswith(".ld") for n in fallback) and any(n.endswith(".ldx") for n in fallback), fallback
+    os.chdir(work)
+
     print(f"ok: {len(ch)} channels, {len(speed)} samples, files {names}")
 
 
